@@ -4,48 +4,37 @@ library(Rcpp)
 sourceCpp("cox-subsampling.cpp", verbose=TRUE)
 
 
+build_score = function(ret)
+{
+  tmp = ret$hess  
+  ret_hess = tmp + t(tmp)
+  diag(ret_hess) = diag(tmp)
+  ret[["hess"]] = -ret_hess
+  return(ret)
+}
+
+
 # function that runs internally in the main function
 information_score_matrix = function(beta,weights=NULL,times,truncs=NULL,status,covariates,samp_prob=NULL,information_mat=T,score_res_mat=T) {
   if(is.null(weights)) {weights = c(-1)}
   if(is.null(truncs)) {truncs = c(-1)}
-  if(is.null(samp_prob))
+  
+  ret = rcpp_score_wrapper(beta,weights,times,truncs,status,covariates,1*information_mat,1*score_res_mat)
+  if(information_mat)
   {
-    ret = rcpp_score_wrapper(beta,weights,times,truncs,status,covariates,1*information_mat,1*score_res_mat)
-    if(information_mat)
-    {
-      tmp = ret$hess  
-      ret_hess = tmp + t(tmp)
-      diag(ret_hess) = diag(tmp)
-      ret[["hess"]] = -ret_hess 
-    }
-    return(ret)
+    ret = build_score(ret)
   }
+  
   if(samp_prob == "A")
   {
-    ret = rcpp_score_wrapper(beta,weights,times,truncs,status,covariates,1,1)
-    tmp = ret$hess  
-    ret_hess = tmp + t(tmp)
-    diag(ret_hess) = diag(tmp)
-    ret[["hess"]] = -ret_hess 
     ret[["samp_prob"]] = rcpp_A_OPT(ret[["residual"]],solve(ret[["hess"]]))
-    return(ret)
   }
   if(samp_prob == "L")
   {
-    if(information_mat)
-    {
-      ret = rcpp_score_wrapper(beta,weights,times,truncs,status,covariates,1,1)
-      tmp = ret$hess  
-      ret_hess = tmp + t(tmp)
-      diag(ret_hess) = diag(tmp)
-      ret[["hess"]] = -ret_hess 
-    } else
-    {
-      ret = rcpp_score_wrapper(beta,weights,times,truncs,status,covariates,0,1)
-    }
     ret[["samp_prob"]] = rcpp_L_OPT(ret[["residual"]])
-    return(ret)
   }
+  
+  return(ret)
 }
 
 uniform_sampling = function(n, q0, cens_ind) 
@@ -94,6 +83,7 @@ get_sampling = function(method, U_coef, V, R, D, X)
   {
     fit_samp_opt = coxph(Surv(R[samp_ord],V[samp_ord],D[samp_ord],type = "counting") ~ X[samp_ord,],weights = rand_sampling$weights,robust = F,init = U_coef)
   }
+  ## ask Nir about the information added when it's A/L method 
   tmp2 = information_score_matrix(coef(fit_samp_opt),weights = rand_sampling$weights,truncs = R[samp_ord],times = V[samp_ord],status = D[samp_ord],covariates = X[samp_ord,])
   opt_coef = coef(fit_samp_opt)
   names(opt_coef) = colnames(X)
@@ -132,7 +122,6 @@ subsampling_cox = function(V, D, X, R=NULL, q, q0 = q, method)
   n_cens = length(cens_ind)
   n_events = n - n_cens
   
-  #uniform sampling
   uni_samp = uniform_sampling(n, q0, cens_ind)
   
   if(is.null(R))
