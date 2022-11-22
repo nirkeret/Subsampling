@@ -3,6 +3,7 @@ library(Rcpp)
 
 sourceCpp("cox-subsampling.cpp", verbose=TRUE)
 
+## start of internal functions
 
 build_score = function(ret)
 {
@@ -13,8 +14,6 @@ build_score = function(ret)
   return(ret)
 }
 
-
-# function that runs internally in the main function
 information_score_matrix = function(beta,weights=NULL,times,truncs=NULL,status,covariates,samp_prob=NULL,information_mat=T,score_res_mat=T) {
   if(is.null(weights)) {weights = c(-1)}
   if(is.null(truncs)) {truncs = c(-1)}
@@ -96,6 +95,9 @@ get_sampling = function(method, U_coef, V, R, D, X)
   ret = list("coef" = opt_coef, "var" = var_opt)
   return(ret)
 }
+
+## end of internal functions
+
 
 # V = observed times
 # D = status (T/F)
