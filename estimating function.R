@@ -79,13 +79,7 @@ random_sampling = function(n_cens, n_events, q, tmp1, cens_ind_ord, D_ord)
 get_sampling = function(method, U_coef, V, R, D, X) 
 {
   get_info_matrix = method == "A"
-  if(is.null(R))
-  {
-    tmp1 = information_score_matrix(U_coef,times = V,status = D,covariates = X, samp_prob = method,information_mat = get_info_matrix)  
-  }else
-  {
-    tmp1 = information_score_matrix(U_coef,times = V,truncs = R,status = D,covariates = X, samp_prob = method,information_mat = get_info_matrix)  
-  }
+  tmp1 = information_score_matrix(U_coef,times = V,truncs = R,status = D,covariates = X, samp_prob = method,information_mat = get_info_matrix)
   D_ord = D[tmp1$ord]
   cens_ind_ord = which(!D_ord)
   
@@ -95,13 +89,12 @@ get_sampling = function(method, U_coef, V, R, D, X)
   
   if(is.null(R))
   {
-    fit_samp_opt = coxph(Surv(time=V[samp_ord],event=D[samp_ord]) ~ X[samp_ord,],weights = rand_sampling$weights,robust = F,init = U_coef)  
-    tmp2 = information_score_matrix(coef(fit_samp_opt),weights = rand_sampling$weights,times = V[samp_ord],status = D[samp_ord],covariates = X[samp_ord,]) 
+    fit_samp_opt = coxph(Surv(time=V[samp_ord],event=D[samp_ord]) ~ X[samp_ord,],weights = rand_sampling$weights,robust = F,init = U_coef)
   }else
   {
-    fit_samp_opt = coxph(Surv(R[samp_ord],V[samp_ord],D[samp_ord],type = "counting") ~ X[samp_ord,],weights = rand_sampling$weights,robust = F,init = U_coef)  
-    tmp2 = information_score_matrix(coef(fit_samp_opt),weights = rand_sampling$weights,truncs = R[samp_ord],times = V[samp_ord],status = D[samp_ord],covariates = X[samp_ord,]) 
+    fit_samp_opt = coxph(Surv(R[samp_ord],V[samp_ord],D[samp_ord],type = "counting") ~ X[samp_ord,],weights = rand_sampling$weights,robust = F,init = U_coef)
   }
+  tmp2 = information_score_matrix(coef(fit_samp_opt),weights = rand_sampling$weights,truncs = R[samp_ord],times = V[samp_ord],status = D[samp_ord],covariates = X[samp_ord,])
   opt_coef = coef(fit_samp_opt)
   names(opt_coef) = colnames(X)
   ind_rm = (1:n_events)+q
@@ -154,14 +147,7 @@ subsampling_cox = function(V, D, X, R=NULL, q, q0 = q, method)
   
   if(method == "U")
   {
-    if(is.null(R))
-    {
-      tmpU = information_score_matrix(U_coef,weights = weights_unif[samp_ind_unif],times = v[samp_ind_unif],status = delta[samp_ind_unif],covariates = X[samp_ind_unif,])  
-    }else
-    {
-      tmpU = information_score_matrix(U_coef,weights = weights_unif[samp_ind_unif],times = v[samp_ind_unif],truncs = R[samp_ind_unif],status = delta[samp_ind_unif],covariates = X[samp_ind_unif,]) 
-    }
-    
+    tmpU = information_score_matrix(U_coef,weights = weights_unif[samp_ind_unif],times = v[samp_ind_unif],truncs = R[samp_ind_unif],status = delta[samp_ind_unif],covariates = X[samp_ind_unif,])
     var_unif = calc_uniform_variance(tmpU, n_cens, q0)
     ret = list("coef" = U_coef, "var" = var_unif)
     return(ret)
