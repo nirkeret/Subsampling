@@ -62,6 +62,7 @@ subsampling_cox = function(V, D, X, R=NULL, q, q0 = q, method)
   {
     stop("method has to be one of U, L or A")
   }
+  ## add check if method == U then q == q0
   n = length(V)
   cens_ind = which(D == 0)
   n_cens = length(cens_ind)
@@ -92,6 +93,7 @@ subsampling_cox = function(V, D, X, R=NULL, q, q0 = q, method)
       tmpU = information_score_matrix(U_coef,weights = weights_unif[samp_ind_unif],times = v[samp_ind_unif],truncs = R[samp_ind_unif],status = delta[samp_ind_unif],covariates = X[samp_ind_unif,]) 
     }
     
+    ## variance calc
     Score_U = tmpU$residual * n_cens
     phi_mat_U = cov(Score_U)
     I_inv_U = solve(tmpU$hess)
