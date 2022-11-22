@@ -48,6 +48,72 @@ information_score_matrix = function(beta,weights=NULL,times,truncs=NULL,status,c
   }
 }
 
+uniform_sampling = function(n, q0, cens_ind) 
+  {
+  unif_cont_ind = sample(cens_ind,q0,replace = T)  #sampling q0 censored observations
+  samp_ind_unif = c(unif_cont_ind,setdiff(1:n,cens_ind)) #joining sampled censored with all events
+  cens_weights_unif = length(cens_ind)/ q0
+  weights_unif = ifelse(D,1,cens_weights_unif)
+  return(list("samp" = samp_ind_unif, "weights" = weights_unif))
+}
+
+calc_uniform_variance = function(tmpU, n_cens, q0) 
+{
+  Score_U = tmpU$residual * n_cens
+  phi_mat_U = cov(Score_U)
+  I_inv_U = solve(tmpU$hess)
+  var_unif = I_inv_U + I_inv_U %*% phi_mat_U %*% I_inv_U/q0
+  return(var_unif)
+}
+
+random_sampling = function(n_cens, n_events, q, tmp1, cens_ind_ord, D_ord)
+{
+  samp_ind_cens = sample(1:n_cens,q,replace = T,prob = tmp1$samp_prob)  #sampling q censored observations
+  samp_ind_opt = c(cens_ind_ord[samp_ind_cens],which(D_ord)) #joining the sampled censored with the failure times
+  cens_weights_opt = (1/(tmp1$samp_prob * q))[samp_ind_cens]
+  weights_opt = c(cens_weights_opt,rep(1,n_events))
+  samp_ord = tmp1$ord[samp_ind_opt]
+  return(list("samp_ord" = samp_ord, "samp" = samp_ind_cens, "weights" = weights_opt))
+}
+
+get_sampling = function(method, U_coef, V, R, D, X) 
+{
+  get_info_matrix = method == "A"
+  if(is.null(R))
+  {
+    tmp1 = information_score_matrix(U_coef,times = V,status = D,covariates = X, samp_prob = method,information_mat = get_info_matrix)  
+  }else
+  {
+    tmp1 = information_score_matrix(U_coef,times = V,truncs = R,status = D,covariates = X, samp_prob = method,information_mat = get_info_matrix)  
+  }
+  D_ord = D[tmp1$ord]
+  cens_ind_ord = which(!D_ord)
+  
+  # random sampling with L/A-optimal probabilities from censored
+  rand_sampling = random_sampling(n_cens, n_events, q, tmp1, cens_ind_ord, D_ord)
+  samp_ord = rand_sampling$samp_ord
+  
+  if(is.null(R))
+  {
+    fit_samp_opt = coxph(Surv(time=V[samp_ord],event=D[samp_ord]) ~ X[samp_ord,],weights = rand_sampling$weights,robust = F,init = U_coef)  
+    tmp2 = information_score_matrix(coef(fit_samp_opt),weights = rand_sampling$weights,times = V[samp_ord],status = D[samp_ord],covariates = X[samp_ord,]) 
+  }else
+  {
+    fit_samp_opt = coxph(Surv(R[samp_ord],V[samp_ord],D[samp_ord],type = "counting") ~ X[samp_ord,],weights = rand_sampling$weights,robust = F,init = U_coef)  
+    tmp2 = information_score_matrix(coef(fit_samp_opt),weights = rand_sampling$weights,truncs = R[samp_ord],times = V[samp_ord],status = D[samp_ord],covariates = X[samp_ord,]) 
+  }
+  opt_coef = coef(fit_samp_opt)
+  names(opt_coef) = colnames(X)
+  ind_rm = (1:n_events)+q
+  order_rm = tmp2$ord[!(tmp2$ord %in% ind_rm)]
+  Score = tmp2$residual / tmp1$samp_prob[rand_sampling$samp][order_rm]
+  phi_mat = cov(Score)
+  I_inv = solve(tmp2$hess)
+  var_opt = I_inv + I_inv %*% phi_mat %*% I_inv/q
+  ret = list("coef" = opt_coef, "var" = var_opt)
+  return(ret)
+}
+
 # V = observed times
 # D = status (T/F)
 # X = covariate matrix
@@ -58,31 +124,34 @@ information_score_matrix = function(beta,weights=NULL,times,truncs=NULL,status,c
 
 subsampling_cox = function(V, D, X, R=NULL, q, q0 = q, method)
 {
+  #input validation
   if(!(method %in% c("U","L","A"))) 
   {
     stop("method has to be one of U, L or A")
   }
-  ## add check if method == U then q == q0
+  if((method == "U") & (q != q0))
+  {
+    stop("when method set to U, q0 must be equal to q")
+  }
+  
   n = length(V)
   cens_ind = which(D == 0)
   n_cens = length(cens_ind)
   n_events = n - n_cens
   
   #uniform sampling
-  unif_cont_ind = sample(cens_ind,q0,replace = T)  #sampling q0 censored observations
-  samp_ind_unif = c(unif_cont_ind,setdiff(1:n,cens_ind)) #joining sampled censored with all events
-  cens_weights_unif = length(cens_ind)/ q0
-  weights_unif = ifelse(D,1,cens_weights_unif)
+  uni_samp = uniform_sampling(n, q0, cens_ind)
   
   if(is.null(R))
   {
-    fit_samp_unif = coxph(Surv(time = V[samp_ind_unif], event = D[samp_ind_unif]) ~ X[samp_ind_unif,],weights = weights_unif[samp_ind_unif],robust = F)  
+    fit_samp_unif = coxph(Surv(time = V[uni_samp$samp], event = D[uni_samp$samp]) ~ X[uni_samp$samp,],weights = uni_samp$weights[uni_samp$samp],robust = F)  
   }else
   {
-    fit_samp_unif = coxph(Surv(R[samp_ind_unif],v[samp_ind_unif],delta[samp_ind_unif],type = "counting") ~ X[samp_ind_unif,],weights = weights_unif[samp_ind_unif],robust = F)  
+    fit_samp_unif = coxph(Surv(R[uni_samp$samp],v[uni_samp$samp],delta[uni_samp$samp],type = "counting") ~ X[uni_samp$samp,],weights = uni_samp$weights[uni_samp$samp],robust = F)  
   }
   U_coef = coef(fit_samp_unif)
   names(U_coef) = colnames(X)
+  
   if(method == "U")
   {
     if(is.null(R))
@@ -93,92 +162,14 @@ subsampling_cox = function(V, D, X, R=NULL, q, q0 = q, method)
       tmpU = information_score_matrix(U_coef,weights = weights_unif[samp_ind_unif],times = v[samp_ind_unif],truncs = R[samp_ind_unif],status = delta[samp_ind_unif],covariates = X[samp_ind_unif,]) 
     }
     
-    ## variance calc
-    Score_U = tmpU$residual * n_cens
-    phi_mat_U = cov(Score_U)
-    I_inv_U = solve(tmpU$hess)
-    var_unif = I_inv_U + I_inv_U %*% phi_mat_U %*% I_inv_U/q0
+    var_unif = calc_uniform_variance(tmpU, n_cens, q0)
     ret = list("coef" = U_coef, "var" = var_unif)
     return(ret)
   }
-  if(method == "L")
+  else
   {
-    if(is.null(R))
-    {
-      tmp_L1 = information_score_matrix(U_coef,times = V,status = D,covariates = X, samp_prob = "L",information_mat = F)  
-    }else
-    {
-      tmp_L1 = information_score_matrix(U_coef,times = V,truncs = R,status = D,covariates = X, samp_prob = "L",information_mat = F)  
-    }
-    D_L = D[tmp_L1$ord]
-    cens_ind_ord = which(!D_L)
-    
-    # random sampling with L-optimal probabilities from censored
-    samp_ind_cens = sample(1:n_cens,q,replace = T,prob = tmp_L1$samp_prob)  #sampling q censored observations
-    samp_ind_opt = c(cens_ind_ord[samp_ind_cens],which(D_L)) #joining the sampled censored with the failure times
-    cens_weights_opt = (1/(tmp_L1$samp_prob * q))[samp_ind_cens]
-    weights_opt = c(cens_weights_opt,rep(1,n_events))
-    
-    samp_ord = tmp_L1$ord[samp_ind_opt]
-    
-    if(is.null(R))
-    {
-      fit_samp_opt_L = coxph(Surv(time=V[samp_ord],event=D[samp_ord]) ~ X[samp_ord,],weights = weights_opt,robust = F,init = U_coef)  
-      tmp_L2 = information_score_matrix(coef(fit_samp_opt_L),weights = weights_opt,times = V[samp_ord],status = D[samp_ord],covariates = X[samp_ord,]) 
-    }else
-    {
-      fit_samp_opt_L = coxph(Surv(R[samp_ord],V[samp_ord],D[samp_ord],type = "counting") ~ X[samp_ord,],weights = weights_opt,robust = F,init = U_coef)  
-      tmp_L2 = information_score_matrix(coef(fit_samp_opt_L),weights = weights_opt,truncs = R[samp_ord],times = V[samp_ord],status = D[samp_ord],covariates = X[samp_ord,]) 
-    }
-    L_coef = coef(fit_samp_opt_L)
-    names(L_coef) = colnames(X)
-    ind_rm = (1:n_events)+q
-    order_rm = tmp_L2$ord[!(tmp_L2$ord %in% ind_rm)]
-    Score_L = tmp_L2$residual / tmp_L1$samp_prob[samp_ind_cens][order_rm]
-    phi_mat_L = cov(Score_L)
-    I_inv_L = solve(tmp_L2$hess)
-    var_opt_L = I_inv_L + I_inv_L %*% phi_mat_L %*% I_inv_L/q
-    ret = list("coef" = L_coef, "var" = var_opt_L)
-    return(ret)
-  }
-  if(method == "A")
-  {
-    if(is.null(R))
-    {
-      tmp_A1 = information_score_matrix(U_coef,times = V,status = D,covariates = X, samp_prob = "A")  
-    }else
-    {
-      tmp_A1 = information_score_matrix(U_coef,times = V,truncs = R,status = D,covariates = X, samp_prob = "A")  
-    }
-    D_A = D[tmp_A1$ord]
-    cens_ind_ord = which(!D_A) 
-    
-    # random sampling with A-optimal probabilities from censored
-    samp_ind_cens = sample(1:n_cens,q,replace = T,prob = tmp_A1$samp_prob)  #sampling q censored observations
-    samp_ind_opt = c(cens_ind_ord[samp_ind_cens],which(D_A)) #joining the sampled censored with the failure times
-    cens_weights_opt = (1/(tmp_A1$samp_prob * q))[samp_ind_cens]
-    weights_opt = c(cens_weights_opt,rep(1,n_events))
-    
-    samp_ord = tmp_A1$ord[samp_ind_opt]
-    if(is.null(R))
-    {
-      fit_samp_opt_A = coxph(Surv(time=V[samp_ord],event=D[samp_ord]) ~ X[samp_ord,],weights = weights_opt,robust = F,init = U_coef)  
-      tmp_A2 = information_score_matrix(coef(fit_samp_opt_A),weights = weights_opt,times = V[samp_ord],status = D[samp_ord],covariates = X[samp_ord,]) 
-    }else
-    {
-      fit_samp_opt_A = coxph(Surv(R[samp_ord],V[samp_ord],D[samp_ord],type = "counting") ~ X[samp_ord,],weights = weights_opt,robust = F,init = U_coef)  
-      tmp_A2 = information_score_matrix(coef(fit_samp_opt_A),weights = weights_opt,truncs = R[samp_ord],times = V[samp_ord],status = D[samp_ord],covariates = X[samp_ord,]) 
-    }
-    A_coef = coef(fit_samp_opt_A)
-    names(A_coef) = colnames(X)
-    ind_rm = (1:n_events)+q
-    order_rm = tmp_A2$ord[!(tmp_A2$ord %in% ind_rm)]
-    Score_A = tmp_A2$residual / tmp_A1$samp_prob[samp_ind_cens][order_rm]
-    phi_mat_A = cov(Score_A)
-    I_inv_A = solve(tmp_A2$hess)
-    var_opt_A = I_inv_A + I_inv_A %*% phi_mat_A %*% I_inv_A/q
-    ret = list("coef" = A_coef, "var" = var_opt_A)
-    return(ret)
+    sampling = get_sampling(method, U_coef, V, R, D, X)
+    return(sampling)
   }
 }
 
