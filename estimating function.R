@@ -82,7 +82,6 @@ get_sampling = function(method, U_coef, V, R, D, X)
   {
     fit_samp_opt = coxph(Surv(R[samp_ord],V[samp_ord],D[samp_ord],type = "counting") ~ X[samp_ord,],weights = rand_sampling$weights,robust = F,init = U_coef)
   }
-  ## ask Nir about the information added when it's A/L method 
   tmp2 = information_score_matrix(coef(fit_samp_opt),weights = rand_sampling$weights,truncs = R[samp_ord],times = V[samp_ord],status = D[samp_ord],covariates = X[samp_ord,])
   opt_coef = coef(fit_samp_opt)
   names(opt_coef) = colnames(X)
