@@ -1,6 +1,6 @@
 Rcpp::sourceCpp("./CPP_Source/cox-subsampling.cpp", verbose=TRUE)
 
-### start of internal functions
+## start of internal functions
 
 build_score = function(ret)
 {
