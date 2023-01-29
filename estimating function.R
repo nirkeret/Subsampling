@@ -77,7 +77,7 @@ get_sampling = function(method, U_coef, V, R, D, X)
   
   if(is.null(R))
   {
-    fit_samp_opt = coxph(Surv(time=V[samp_ord],event=D[samp_ord]) ~ X[samp_ord,],weights = rand_sampling$weights,robust = F,init = U_coef)
+ ()   fit_samp_opt = coxph(Surv(time=V[samp_ord],event=D[samp_ord]) ~ X[samp_ord,],weights = rand_sampling$weights,robust = F,init = U_coef)
   }else
   {
     fit_samp_opt = coxph(Surv(R[samp_ord],V[samp_ord],D[samp_ord],type = "counting") ~ X[samp_ord,],weights = rand_sampling$weights,robust = F,init = U_coef)
