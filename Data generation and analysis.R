@@ -6,47 +6,35 @@ library(multipleNCC)
 library(msm)
 sourceCpp("cox-subsampling.cpp", verbose=TRUE)
 
+build_score = function(ret)
+{
+  tmp = ret$hess  
+  ret_hess = tmp + t(tmp)
+  diag(ret_hess) = diag(tmp)
+  ret[["hess"]] = -ret_hess
+  return(ret)
+}
+
 information_score_matrix = function(beta,weights=NULL,times,truncs=NULL,status,covariates,samp_prob=NULL,information_mat=T,score_res_mat=T) {
   if(is.null(weights)) {weights = c(-1)}
   if(is.null(truncs)) {truncs = c(-1)}
-  if(is.null(samp_prob))
+  
+  ret = rcpp_score_wrapper(beta,weights,times,truncs,status,covariates,1*information_mat,1*score_res_mat)
+  if(information_mat)
   {
-    ret = rcpp_score_wrapper(beta,weights,times,truncs,status,covariates,1*information_mat,1*score_res_mat)
-    if(information_mat)
-    {
-      tmp = ret$hess  
-      ret_hess = tmp + t(tmp)
-      diag(ret_hess) = diag(tmp)
-      ret[["hess"]] = -ret_hess 
-    }
-    return(ret)
+    ret = build_score(ret)
   }
+  
   if(samp_prob == "A")
   {
-    ret = rcpp_score_wrapper(beta,weights,times,truncs,status,covariates,1,1)
-    tmp = ret$hess  
-    ret_hess = tmp + t(tmp)
-    diag(ret_hess) = diag(tmp)
-    ret[["hess"]] = -ret_hess 
     ret[["samp_prob"]] = rcpp_A_OPT(ret[["residual"]],solve(ret[["hess"]]))
-    return(ret)
   }
   if(samp_prob == "L")
   {
-    if(information_mat)
-    {
-      ret = rcpp_score_wrapper(beta,weights,times,truncs,status,covariates,1,1)
-      tmp = ret$hess  
-      ret_hess = tmp + t(tmp)
-      diag(ret_hess) = diag(tmp)
-      ret[["hess"]] = -ret_hess 
-    } else
-    {
-      ret = rcpp_score_wrapper(beta,weights,times,truncs,status,covariates,0,1)
-    }
     ret[["samp_prob"]] = rcpp_L_OPT(ret[["residual"]])
-    return(ret)
   }
+  
+  return(ret)
 }
 
 
