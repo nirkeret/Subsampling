@@ -531,7 +531,9 @@ for(i in 1:10)
   
   ####### prediction on test #######
   Xtest = model.matrix(fmlaGenNosex,data = UKBtest)[,-1]
-  LPtest_const = as.vector(Xtest %*% Lcoef[-29])  # 20 should be the sex_time coefficient
+  
+  sex_time_ind = which(names(Lcoef) == "sex_time")
+  LPtest_const = as.vector(Xtest %*% Lcoef[-sex_time_ind])   #getting the LP without the sex_time variable
   
   #getting the contribution of sex_time to the linear predictors at the AUC_times grid
   sex_mat = matrix(UKBtest$sex,nrow = n_test,ncol = length(AUCtimes))
