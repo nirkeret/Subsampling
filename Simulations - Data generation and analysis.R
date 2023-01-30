@@ -25,6 +25,7 @@ information_score_matrix = function(beta,weights=NULL,times,truncs=NULL,status,c
     ret = build_score(ret)
   }
   
+  if(is.null(samp_prob)) return(ret)
   if(samp_prob == "A")
   {
     ret[["samp_prob"]] = rcpp_A_OPT(ret[["residual"]],solve(ret[["hess"]]))
