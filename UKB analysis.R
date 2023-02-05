@@ -4,7 +4,7 @@ library(psych)
 
 ######## loading the data and functions ##############
 
-UKB = read.csv("syntheticUKB.csv")
+UKB = read.csv("synthUKB.csv")
 
 sourceCpp("cox-subsampling-reservoir", verbose=TRUE)
 
