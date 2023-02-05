@@ -25,7 +25,7 @@ method: one of "U"/"L"/"A" (standing for uniform, L-optimal, A-optimal)
 The "**Simulations - Data generation and analysis**" file contains the data generation process and the analysis workflow for the simulations described in the manuscript.
 
 The "**UKB analysis**" file contains the real data analysis workflow - both the main time-dependent coefficients analysis, as well as the cross-validated AUC(t) derivations.
-The analysis is demonstrated using a synthetic dataset (**synthUKB.csv**) similar in nature to the UKB, so results obtained by analyzing it should not be similar to those in the paper.
+The analysis is demonstrated using a synthetic dataset (**synthUKB.csv**) similar in nature to the UKB (but with only 100k observations), so results obtained by analyzing it should not be similar to those in the paper.
 
 The RCPP files are required for performing the subsampling procedure. For the reservoir sampling there is a slight difference in one of the functions, hence the two different
 files. These codes will soon be unified and integrated into a package.
