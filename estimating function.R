@@ -45,7 +45,7 @@ information_score_matrix = function(beta,weights=NULL,times,truncs=NULL,status,c
 # q = number of subsampled censored observations in the second round for the L and A 
 # method: one of "U"/"L"/"A" (standing for uniform, L-optimal, A-optimal)
 
-subsampling_cox = function(V, D, X, R=NULL, q, q0 = q, method)
+CoxSubsample = function(V, D, X, R=NULL, q, q0 = q, method)
 {
   if(!(method %in% c("U","L","A"))) 
   {
