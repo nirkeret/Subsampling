@@ -8,11 +8,17 @@ Soon there will be a version that implements the reservoir sampling for a user-p
 These are the arguments that the function should receive:
 
 V = vector of observed times.
+
 D = event status (T/F).
+
 X = covariate matrix.
+
 R = vector of delayed-entry (left truncation) times.
+
 q0 = number of subsampled censored observations for the uniform pilot estimator. Defaults to be the same as q.
+
 q = number of subsampled censored observations.
+
 method: one of "U"/"L"/"A" (standing for uniform, L-optimal, A-optimal).
 
 **As for the other files**:
