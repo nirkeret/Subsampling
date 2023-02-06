@@ -15,7 +15,7 @@ X = covariate matrix.
 
 R = vector of delayed-entry (left truncation) times.
 
-q0 = number of subsampled censored observations for the uniform pilot estimator. Defaults to be the same as q.
+q0 = number of subsampled censored observations for the uniform pilot estimator (relevant only for the “L” and “A” methods). Defaults to be the same as q.
 
 q = number of subsampled censored observations.
 
