@@ -7,19 +7,13 @@ The "**estimating function**" file contains the function that implements the pro
 Soon there will be a version that implements the reservoir sampling for a user-provided dataset divided to batches that are stored on the hard drive.*
 These are the arguments that the function should receive:
 
-V = observed times
-
-D = status (T/F)
-
-X = covariate matrix
-
-R = recruitment (left truncation) times
-
-q0 = number of subsampled censored observations for the uniform estimator (being the pilot estimator for L and A). Defaults to be the same as q.
-
-q = number of subsampled censored observations in the second round for the L and A 
-
-method: one of "U"/"L"/"A" (standing for uniform, L-optimal, A-optimal)
+V = vector of observed times.
+D = event status (T/F).
+X = covariate matrix.
+R = vector of delayed-entry (left truncation) times.
+q0 = number of subsampled censored observations for the uniform pilot estimator. Defaults to be the same as q.
+q = number of subsampled censored observations.
+method: one of "U"/"L"/"A" (standing for uniform, L-optimal, A-optimal).
 
 **As for the other files**:
 The "**Simulations - Data generation and analysis**" file contains the data generation process and the analysis workflow for the simulations described in the manuscript.
