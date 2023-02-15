@@ -63,7 +63,7 @@ random_sampling = function(n_cens, n_events, q, tmp1, cens_ind_ord, D_ord)
   return(list("samp_ord" = samp_ord, "samp" = samp_ind_cens, "weights" = weights_opt))
 }
 
-get_sampling = function(method, U_coef, V, R, D, X) 
+get_opt_sampling = function(method, U_coef, V, R, D, X) 
 {
   get_info_matrix = method == "A"
   tmp1 = information_score_matrix(U_coef,times = V,truncs = R,status = D,covariates = X, samp_prob = method,information_mat = get_info_matrix)
@@ -90,8 +90,9 @@ get_sampling = function(method, U_coef, V, R, D, X)
   phi_mat = cov(Score)
   I_inv = solve(tmp2$hess)
   var_opt = I_inv + I_inv %*% phi_mat %*% I_inv/q
-  ret = list("coef" = opt_coef, "var" = var_opt)
-  return(ret)
+  
+  fit_samp_opt$var = var_opt
+  return(fit_samp_opt)
 }
 
 ## end of internal functions
@@ -145,12 +146,12 @@ subsampling_cox = function(V, D, X, R=NULL, q, q0 = q, method)
   {
     tmpU = information_score_matrix(U_coef,weights = weights_unif[samp_ind_unif],times = v[samp_ind_unif],truncs = R[samp_ind_unif],status = delta[samp_ind_unif],covariates = X[samp_ind_unif,])
     var_unif = calc_uniform_variance(tmpU, n_cens, q0)
-    ret = list("coef" = U_coef, "var" = var_unif)
-    return(ret)
+	fit_samp_unif$var = var_unif
+    return(fit_samp_unif)
   }
   else
   {
-    sampling = get_sampling(method, U_coef, V, R, D, X)
+    sampling = get_opt_sampling(method, U_coef, V, R, D, X)
     return(sampling)
   }
 }
