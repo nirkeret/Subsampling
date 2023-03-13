@@ -2,7 +2,8 @@
 
 This repository has R and RCPP codes that perform the subsampling procedure described in https://arxiv.org/abs/2012.02122. 
 
-The "**estimating function**" file contains the function that implements the procedure for a user-provided dataset. The required input arguments are listed within the code and are given here as well for convenience.
+The "**estimating function**" file contains the function that implements the procedure for a user-provided dataset. The required input arguments are listed within the code and are given here as well for convenience. *Please note that this function requires that the entire dataset can be loaded into the R session.
+Soon there will be a version that implements the reservoir sampling for a user-provided dataset divided to batches that are stored on the hard drive.*
 These are the arguments that the function should receive:
 
 V = vector of observed times.
